@@ -7,6 +7,7 @@ import {
 } from "@/lib/wprdc";
 import { scrapeOwnerNames } from "@/lib/scraper";
 import { Neighbor } from "@/lib/types";
+import { filterByProximity } from "@/lib/geo";
 
 export async function POST(req: Request) {
   try {
@@ -76,23 +77,15 @@ export async function POST(req: Request) {
       }
     }
 
-    // Filter to properties within ~800m of the user's neighborhood center
+    // Filter to properties within 1000ft of the user, capped at 100
     let nearbyAssessments = newAssessments;
     if (center && center.length === 2) {
-      const [cLat, cLng] = center;
-      nearbyAssessments = newAssessments.filter((a) => {
-        const coords = coordsMap.get(a.PARID);
-        if (!coords) return false;
-        const dLat = ((coords[0] - cLat) * Math.PI) / 180;
-        const dLng = ((coords[1] - cLng) * Math.PI) / 180;
-        const sin2 =
-          Math.sin(dLat / 2) ** 2 +
-          Math.cos((cLat * Math.PI) / 180) *
-            Math.cos((coords[0] * Math.PI) / 180) *
-            Math.sin(dLng / 2) ** 2;
-        const meters = 6371000 * 2 * Math.atan2(Math.sqrt(sin2), Math.sqrt(1 - sin2));
-        return meters <= 800;
-      });
+      nearbyAssessments = filterByProximity(
+        newAssessments,
+        (a) => coordsMap.get(a.PARID),
+        center[0],
+        center[1]
+      );
     }
 
     const nearbyParcelIds = nearbyAssessments.map((a) => a.PARID);

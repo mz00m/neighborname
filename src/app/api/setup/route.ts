@@ -9,6 +9,7 @@ import {
 } from "@/lib/wprdc";
 import { Neighbor, NeighborhoodData } from "@/lib/types";
 import { scrapeOwnerNames } from "@/lib/scraper";
+import { filterByProximity } from "@/lib/geo";
 
 function extractStreetName(address: string): string {
   const cleaned = address.toUpperCase().replace(/,/g, "");
@@ -101,25 +102,34 @@ export async function POST(req: Request) {
       }
     }
 
-    const ownerNames = await scrapeOwnerNames(parcelIds);
+    // Filter to properties within 1000ft of the user, capped at 100
+    const candidateAssessments = assessments.filter(
+      (a) => a.PARID !== geo.parcelId && coordsMap.has(a.PARID)
+    );
+    const nearbyAssessments = filterByProximity(
+      candidateAssessments,
+      (a) => coordsMap.get(a.PARID),
+      geo.lat,
+      geo.lng
+    );
 
-    const neighbors: Neighbor[] = assessments
-      .filter((a) => a.PARID !== geo.parcelId)
-      .filter((a) => coordsMap.has(a.PARID))
-      .map((a) => {
-        const coords = coordsMap.get(a.PARID)!;
-        const ownerName = ownerNames.get(a.PARID) ?? "";
-        return {
-          id: a.PARID,
-          property: assessmentToProperty(a, coords[0], coords[1]),
-          name: ownerName,
-          isOwner: ownerName ? true : null,
-          notes: "",
-          tags: [],
-          met: false,
-          addedAt: new Date().toISOString(),
-        };
-      });
+    const nearbyParcelIds = nearbyAssessments.map((a) => a.PARID);
+    const ownerNames = await scrapeOwnerNames(nearbyParcelIds);
+
+    const neighbors: Neighbor[] = nearbyAssessments.map((a) => {
+      const coords = coordsMap.get(a.PARID)!;
+      const ownerName = ownerNames.get(a.PARID) ?? "";
+      return {
+        id: a.PARID,
+        property: assessmentToProperty(a, coords[0], coords[1]),
+        name: ownerName,
+        isOwner: ownerName ? true : null,
+        notes: "",
+        tags: [],
+        met: false,
+        addedAt: new Date().toISOString(),
+      };
+    });
 
     const myAssessment = assessments.find((a) => a.PARID === geo.parcelId);
     const myProperty = myAssessment

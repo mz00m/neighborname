@@ -22,16 +22,36 @@ function derivePeople(neighbor: Neighbor): Person[] {
       email: p.email || "",
     }));
   }
-  // Migrate from legacy format
-  const names = neighbor.name
-    ? neighbor.name.split(" & ").map((s) => s.trim()).filter(Boolean)
-    : [];
-  if (names.length === 0) names.push("");
-  return names.map((name, i) => ({
-    name,
-    phone: i === 0 ? neighbor.phone || "" : "",
-    email: i === 0 ? neighbor.email || "" : "",
-  }));
+  if (!neighbor.name) return [{ name: "", phone: "", email: "" }];
+
+  // Migrate from legacy format — handle shared last name:
+  // "John & Allison Omalley" → ["John Omalley", "Allison Omalley"]
+  if (!neighbor.name.includes(" & ")) {
+    return [{ name: neighbor.name, phone: neighbor.phone || "", email: neighbor.email || "" }];
+  }
+
+  const parts = neighbor.name.split(" & ");
+  const left = parts[0].trim();
+  const right = parts.slice(1).join(" & ").trim();
+  const leftWords = left.split(" ");
+  const rightWords = right.split(" ");
+
+  // If left is a single word (first name only) and right has 2+ words,
+  // the last word of right is the shared last name
+  if (leftWords.length === 1 && rightWords.length >= 2) {
+    const sharedLast = rightWords[rightWords.length - 1];
+    const rightFirst = rightWords.slice(0, -1).join(" ");
+    return [
+      { name: `${left} ${sharedLast}`, phone: neighbor.phone || "", email: neighbor.email || "" },
+      { name: `${rightFirst} ${sharedLast}`, phone: "", email: "" },
+    ];
+  }
+
+  // Both already have full names, or both are just first names
+  return [
+    { name: left, phone: neighbor.phone || "", email: neighbor.email || "" },
+    { name: right, phone: "", email: "" },
+  ];
 }
 
 /** "Jerome & Mohini Schmitt" style — first names lead, shared last name trails */

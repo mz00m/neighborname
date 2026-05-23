@@ -44,17 +44,36 @@ function formatOwnerName(raw: string): string {
     return "";
   }
 
-  if (/TRUST|LLC|LP|ESTATE|CORP|INC|ASSOC|AUTHORITY|BANK/i.test(cleaned)) {
+  // Strip trust suffixes and parse remainder as a person name
+  const trustStripped = cleaned
+    .replace(/\s+TRUST\s*&.*TRUSTEE\s*$/i, "")
+    .replace(/\s+(REVOCABLE|IRREVOCABLE)\s+TRUST$/i, "")
+    .replace(/\s+FAMILY\s+TRUST$/i, "")
+    .replace(/\s+TRUST$/i, "")
+    .replace(/\s+TRUSTEE$/i, "")
+    .trim();
+
+  if (trustStripped && trustStripped !== cleaned) {
+    return formatPersonName(trustStripped);
+  }
+
+  if (/LLC|LP|ESTATE|CORP|INC|ASSOC|AUTHORITY|BANK/i.test(cleaned)) {
     return titleCase(cleaned);
   }
 
+  return formatPersonName(cleaned);
+}
+
+function formatPersonName(cleaned: string): string {
   const ampersandCount = (cleaned.match(/&/g) || []).length;
   if (ampersandCount === 1) {
     return formatCouple(cleaned);
   }
   if (ampersandCount > 1) {
     const firstAmp = cleaned.indexOf("&");
-    const simplifiedRaw = cleaned.substring(0, cleaned.indexOf("&", firstAmp + 1)).trim();
+    const simplifiedRaw = cleaned
+      .substring(0, cleaned.indexOf("&", firstAmp + 1))
+      .trim();
     return formatCouple(simplifiedRaw);
   }
 

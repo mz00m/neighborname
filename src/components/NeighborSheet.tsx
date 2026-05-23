@@ -21,6 +21,8 @@ export default function NeighborSheet({
   const [isOwner, setIsOwner] = useState<boolean | null>(null);
   const [met, setMet] = useState(false);
   const [photo, setPhoto] = useState<string | undefined>(undefined);
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -31,6 +33,8 @@ export default function NeighborSheet({
       setIsOwner(neighbor.isOwner);
       setMet(neighbor.met);
       setPhoto(neighbor.photo);
+      setEmail(neighbor.email || "");
+      setPhone(neighbor.phone || "");
       setTimeout(() => nameRef.current?.focus(), 300);
     }
   }, [neighbor]);
@@ -70,11 +74,21 @@ export default function NeighborSheet({
     notes !== neighbor.notes ||
     isOwner !== neighbor.isOwner ||
     met !== neighbor.met ||
-    photo !== neighbor.photo;
+    photo !== neighbor.photo ||
+    email !== (neighbor.email || "") ||
+    phone !== (neighbor.phone || "");
 
   function handleSave() {
     if (!neighbor) return;
-    onSave(neighbor.id, { name, notes, isOwner, met: met || !!name, photo });
+    onSave(neighbor.id, {
+      name,
+      notes,
+      isOwner,
+      met: met || !!name,
+      photo,
+      email: email || undefined,
+      phone: phone || undefined,
+    });
     onClose();
   }
 
@@ -199,6 +213,35 @@ export default function NeighborSheet({
                     {opt.label}
                   </button>
                 ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-stone-600 mb-1">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="412-555-1234"
+                    className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-stone-600 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="name@email.com"
+                    className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 text-sm"
+                  />
+                </div>
               </div>
 
               <div>

@@ -29,6 +29,8 @@ export interface Neighbor {
   tags: string[];
   met: boolean;
   photo?: string;
+  email?: string;
+  phone?: string;
   addedAt: string;
 }
 

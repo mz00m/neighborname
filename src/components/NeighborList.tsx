@@ -110,6 +110,11 @@ function NeighborRow({
             {neighbor.isOwner === true && " · Owner"}
             {neighbor.isOwner === false && " · Renter"}
           </p>
+          {(neighbor.phone || neighbor.email) && (
+            <p className="text-xs text-stone-400 truncate">
+              {neighbor.phone}{neighbor.phone && neighbor.email && " · "}{neighbor.email}
+            </p>
+          )}
         </div>
         {neighbor.notes && (
           <svg

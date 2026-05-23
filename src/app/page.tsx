@@ -103,6 +103,36 @@ export default function Home() {
     setUserLocation([lat, lng]);
   }, []);
 
+  const handleExport = useCallback(() => {
+    if (!data) return;
+    const headers = ["Name", "Address", "Phone", "Email", "Owner/Renter", "Met", "Notes"];
+    const rows = data.neighbors
+      .sort((a, b) => {
+        const streetCmp = a.property.street.localeCompare(b.property.street);
+        if (streetCmp !== 0) return streetCmp;
+        return parseInt(a.property.houseNumber) - parseInt(b.property.houseNumber);
+      })
+      .map((n) => [
+        n.name || "",
+        `${n.property.houseNumber} ${n.property.street}`,
+        n.phone || "",
+        n.email || "",
+        n.isOwner === true ? "Owner" : n.isOwner === false ? "Renter" : "",
+        n.met ? "Yes" : "No",
+        n.notes || "",
+      ]);
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "neighbors.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [data]);
+
   if (!loaded) return null;
 
   if (!data) {
@@ -187,6 +217,15 @@ export default function Home() {
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+          <button
+            onClick={handleExport}
+            className="p-2 rounded-lg text-stone-600 hover:bg-stone-100 transition-colors"
+            title="Export CSV"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
           </button>
           <button

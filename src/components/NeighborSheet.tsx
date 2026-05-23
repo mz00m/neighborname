@@ -53,6 +53,21 @@ function formatDisplayName(people: Person[]): string {
   return parsed.map((p) => p.first).join(" & ");
 }
 
+/** Extract just first names: "Jerome Schmitt & Mohini Wagle" → "Jerome & Mohini" */
+function firstNames(neighbor: Neighbor): string {
+  const sources = neighbor.people?.length
+    ? neighbor.people.map((p) => p.name).filter(Boolean)
+    : neighbor.name
+      ? neighbor.name.split(" & ").map((s) => s.trim()).filter(Boolean)
+      : [];
+  if (sources.length === 0) return "";
+  const firsts = sources.map((n) => {
+    const parts = n.split(" ");
+    return parts[0];
+  });
+  return firsts.join(" & ");
+}
+
 function housePhotoUrl(parcelId: string): string {
   return `https://iasworld.alleghenycounty.us/iasworld/iDoc2/Services/GetPhoto.ashx?parid=${parcelId}&jur=002&Rank=1&size=600x400`;
 }
@@ -217,10 +232,16 @@ export default function NeighborSheet({
               <p className="text-lg font-semibold text-white drop-shadow-sm">
                 {property.houseNumber} {property.street}
               </p>
-              {isHome && (
+              {isHome ? (
                 <span className="inline-block mt-0.5 text-xs font-medium text-amber-200 bg-amber-900/40 px-2 py-0.5 rounded-full">
                   Your home
                 </span>
+              ) : (
+                firstNames(neighbor) && (
+                  <p className="text-sm text-white/90 drop-shadow-sm">
+                    {firstNames(neighbor)}
+                  </p>
+                )
               )}
             </div>
           </div>
@@ -233,10 +254,16 @@ export default function NeighborSheet({
                   <p className="text-lg font-semibold text-stone-900">
                     {property.houseNumber} {property.street}
                   </p>
-                  {isHome && (
+                  {isHome ? (
                     <span className="inline-block mt-0.5 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
                       Your home
                     </span>
+                  ) : (
+                    firstNames(neighbor) && (
+                      <p className="text-sm text-stone-500">
+                        {firstNames(neighbor)}
+                      </p>
+                    )
                   )}
                 </div>
               </div>

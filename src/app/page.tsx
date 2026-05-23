@@ -62,6 +62,7 @@ export default function Home() {
             streetName,
             municode: "111",
             existingParcelIds: data.neighbors.map((n) => n.id),
+            center: data.center,
           }),
         });
 

@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     const coordsMap = await getParcelCentroids(parcelIds);
 
     const missing = assessments.filter((a) => !coordsMap.has(a.PARID));
-    if (missing.length > 0 && missing.length <= 60) {
+    if (missing.length > 0 && missing.length <= 200) {
       const batchAddresses = missing.map((a) => ({
         parcelId: a.PARID,
         address: `${a.PROPERTYHOUSENUM} ${a.PROPERTYADDRESS} ${a.PROPERTYCITY || "Pittsburgh"} PA ${a.PROPERTYZIP || "15206"}`,

@@ -10,7 +10,7 @@ import { Neighbor } from "@/lib/types";
 
 export async function POST(req: Request) {
   try {
-    const { streetName, municode, existingParcelIds } = await req.json();
+    const { streetName, municode, existingParcelIds, center } = await req.json();
     if (!streetName) {
       return NextResponse.json({ error: "Street name is required" }, { status: 400 });
     }
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     const coordsMap = await getParcelCentroids(parcelIds);
 
     const missing = newAssessments.filter((a) => !coordsMap.has(a.PARID));
-    if (missing.length > 0 && missing.length <= 60) {
+    if (missing.length > 0 && missing.length <= 200) {
       const batchAddresses = missing.map((a) => ({
         parcelId: a.PARID,
         address: `${a.PROPERTYHOUSENUM} ${a.PROPERTYADDRESS} ${a.PROPERTYCITY || "Pittsburgh"} PA ${a.PROPERTYZIP || "15206"}`,
@@ -76,9 +76,29 @@ export async function POST(req: Request) {
       }
     }
 
-    const ownerNames = await scrapeOwnerNames(parcelIds);
+    // Filter to properties within ~800m of the user's neighborhood center
+    let nearbyAssessments = newAssessments;
+    if (center && center.length === 2) {
+      const [cLat, cLng] = center;
+      nearbyAssessments = newAssessments.filter((a) => {
+        const coords = coordsMap.get(a.PARID);
+        if (!coords) return false;
+        const dLat = ((coords[0] - cLat) * Math.PI) / 180;
+        const dLng = ((coords[1] - cLng) * Math.PI) / 180;
+        const sin2 =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((cLat * Math.PI) / 180) *
+            Math.cos((coords[0] * Math.PI) / 180) *
+            Math.sin(dLng / 2) ** 2;
+        const meters = 6371000 * 2 * Math.atan2(Math.sqrt(sin2), Math.sqrt(1 - sin2));
+        return meters <= 800;
+      });
+    }
 
-    const neighbors: Neighbor[] = newAssessments
+    const nearbyParcelIds = nearbyAssessments.map((a) => a.PARID);
+    const ownerNames = await scrapeOwnerNames(nearbyParcelIds);
+
+    const neighbors: Neighbor[] = nearbyAssessments
       .filter((a) => coordsMap.has(a.PARID))
       .map((a) => {
         const coords = coordsMap.get(a.PARID)!;

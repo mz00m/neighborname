@@ -17,6 +17,22 @@ export default function SetupScreen({ onComplete }: SetupScreenProps) {
     if (!address.trim()) return;
     setLoading(true);
     setError("");
+
+    // Check server for existing data first to prevent overwriting saved annotations
+    setStatus("Checking for existing neighborhood data...");
+    try {
+      const existingRes = await fetch("/api/data");
+      if (existingRes.ok) {
+        const existingData = await existingRes.json();
+        if (existingData && existingData.neighbors && existingData.neighbors.length > 0) {
+          onComplete(existingData);
+          return;
+        }
+      }
+    } catch {
+      // Server unavailable — proceed with fresh setup
+    }
+
     setStatus("Looking up your address in county records...");
 
     try {

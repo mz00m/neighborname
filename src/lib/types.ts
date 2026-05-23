@@ -20,17 +20,24 @@ export interface Property {
   condition?: string;
 }
 
+export interface Person {
+  name: string;
+  phone?: string;
+  email?: string;
+}
+
 export interface Neighbor {
   id: string;
   property: Property;
   name: string;
+  people?: Person[];
   isOwner: boolean | null;
   notes: string;
   tags: string[];
   met: boolean;
   photo?: string;
-  email?: string;
-  phone?: string;
+  email?: string; // legacy — migrated to people
+  phone?: string; // legacy — migrated to people
   addedAt: string;
 }
 

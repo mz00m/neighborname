@@ -112,15 +112,23 @@ export default function Home() {
         if (streetCmp !== 0) return streetCmp;
         return parseInt(a.property.houseNumber) - parseInt(b.property.houseNumber);
       })
-      .map((n) => [
-        n.name || "",
-        `${n.property.houseNumber} ${n.property.street}`,
-        n.phone || "",
-        n.email || "",
-        n.isOwner === true ? "Owner" : n.isOwner === false ? "Renter" : "",
-        n.met ? "Yes" : "No",
-        n.notes || "",
-      ]);
+      .flatMap((n) => {
+        const address = `${n.property.houseNumber} ${n.property.street}`;
+        const ownership = n.isOwner === true ? "Owner" : n.isOwner === false ? "Renter" : "";
+        const metStr = n.met ? "Yes" : "No";
+        const people = n.people?.length
+          ? n.people
+          : [{ name: n.name, phone: n.phone, email: n.email }];
+        return people.map((p) => [
+          p.name || "",
+          address,
+          p.phone || "",
+          p.email || "",
+          ownership,
+          metStr,
+          n.notes || "",
+        ]);
+      });
     const csvContent = [headers, ...rows]
       .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
       .join("\n");

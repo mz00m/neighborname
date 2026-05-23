@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Neighbor } from "@/lib/types";
+import { Neighbor, Person } from "@/lib/types";
 
 interface NeighborSheetProps {
   neighbor: Neighbor | null;
@@ -10,34 +10,76 @@ interface NeighborSheetProps {
   onSave: (id: string, updates: Partial<Neighbor>) => void;
 }
 
+function derivePeople(neighbor: Neighbor): Person[] {
+  if (neighbor.people && neighbor.people.length > 0) {
+    return neighbor.people.map((p) => ({
+      name: p.name || "",
+      phone: p.phone || "",
+      email: p.email || "",
+    }));
+  }
+  // Migrate from legacy format
+  const names = neighbor.name
+    ? neighbor.name.split(" & ").map((s) => s.trim()).filter(Boolean)
+    : [];
+  if (names.length === 0) names.push("");
+  return names.map((name, i) => ({
+    name,
+    phone: i === 0 ? neighbor.phone || "" : "",
+    email: i === 0 ? neighbor.email || "" : "",
+  }));
+}
+
 export default function NeighborSheet({
   neighbor,
   isHome,
   onClose,
   onSave,
 }: NeighborSheetProps) {
-  const [name, setName] = useState("");
+  const [people, setPeople] = useState<Person[]>([{ name: "", phone: "", email: "" }]);
   const [notes, setNotes] = useState("");
   const [isOwner, setIsOwner] = useState<boolean | null>(null);
   const [met, setMet] = useState(false);
   const [photo, setPhoto] = useState<string | undefined>(undefined);
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const snapshotRef = useRef("");
 
   useEffect(() => {
     if (neighbor) {
-      setName(neighbor.name);
+      const initPeople = derivePeople(neighbor);
+      setPeople(initPeople);
       setNotes(neighbor.notes);
       setIsOwner(neighbor.isOwner);
       setMet(neighbor.met);
       setPhoto(neighbor.photo);
-      setEmail(neighbor.email || "");
-      setPhone(neighbor.phone || "");
+      snapshotRef.current = JSON.stringify({
+        people: initPeople,
+        notes: neighbor.notes,
+        isOwner: neighbor.isOwner,
+        met: neighbor.met,
+        photo: neighbor.photo,
+      });
       setTimeout(() => nameRef.current?.focus(), 300);
     }
   }, [neighbor]);
+
+  const updatePerson = useCallback(
+    (index: number, field: keyof Person, value: string) => {
+      setPeople((prev) =>
+        prev.map((p, i) => (i === index ? { ...p, [field]: value } : p))
+      );
+    },
+    []
+  );
+
+  const addPerson = useCallback(() => {
+    setPeople((prev) => [...prev, { name: "", phone: "", email: "" }]);
+  }, []);
+
+  const removePerson = useCallback((index: number) => {
+    setPeople((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
   const handlePhoto = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -69,25 +111,40 @@ export default function NeighborSheet({
   if (!neighbor) return null;
 
   const { property } = neighbor;
-  const hasChanges =
-    name !== neighbor.name ||
-    notes !== neighbor.notes ||
-    isOwner !== neighbor.isOwner ||
-    met !== neighbor.met ||
-    photo !== neighbor.photo ||
-    email !== (neighbor.email || "") ||
-    phone !== (neighbor.phone || "");
+
+  const currentSnapshot = JSON.stringify({
+    people,
+    notes,
+    isOwner,
+    met,
+    photo,
+  });
+  const hasChanges = currentSnapshot !== snapshotRef.current;
 
   function handleSave() {
     if (!neighbor) return;
+    const cleanPeople = people
+      .map((p) => ({
+        name: p.name?.trim() || "",
+        phone: p.phone?.trim() || undefined,
+        email: p.email?.trim() || undefined,
+      }))
+      .filter((p) => p.name || p.phone || p.email);
+
+    const displayName = cleanPeople
+      .map((p) => p.name)
+      .filter(Boolean)
+      .join(" & ");
+
     onSave(neighbor.id, {
-      name,
+      name: displayName,
+      people: cleanPeople.length > 0 ? cleanPeople : undefined,
       notes,
       isOwner,
-      met: met || !!name,
+      met: met || cleanPeople.some((p) => !!p.name),
       photo,
-      email: email || undefined,
-      phone: phone || undefined,
+      email: undefined,
+      phone: undefined,
     });
     onClose();
   }
@@ -129,8 +186,18 @@ export default function NeighborSheet({
               }}
               className="text-stone-400 hover:text-stone-600 p-1"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -153,9 +220,24 @@ export default function NeighborSheet({
                     />
                   ) : (
                     <div className="w-20 h-20 rounded-full bg-stone-100 flex items-center justify-center ring-2 ring-stone-200">
-                      <svg className="w-8 h-8 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <svg
+                        className="w-8 h-8 text-stone-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
                       </svg>
                     </div>
                   )}
@@ -176,21 +258,97 @@ export default function NeighborSheet({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-stone-600 mb-1">
+                <label className="block text-sm font-medium text-stone-600 mb-2">
                   Who lives here?
                 </label>
-                <input
-                  ref={nameRef}
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Name"
-                  className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 text-base"
-                />
-                {name && !neighbor.met && (
-                  <p className="mt-1 text-xs text-stone-400">
-                    From county records — edit if this is a renter or has changed
+                <div className="space-y-4">
+                  {people.map((person, idx) => (
+                    <div key={idx} className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          ref={idx === 0 ? nameRef : undefined}
+                          type="text"
+                          value={person.name}
+                          onChange={(e) =>
+                            updatePerson(idx, "name", e.target.value)
+                          }
+                          onKeyDown={handleKeyDown}
+                          placeholder="Name"
+                          className="flex-1 rounded-lg border border-stone-200 px-3 py-2.5 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 text-base"
+                        />
+                        {people.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removePerson(idx)}
+                            className="px-2 text-stone-300 hover:text-stone-500 transition-colors"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="tel"
+                          value={person.phone || ""}
+                          onChange={(e) =>
+                            updatePerson(idx, "phone", e.target.value)
+                          }
+                          onKeyDown={handleKeyDown}
+                          placeholder="Phone"
+                          className="rounded-lg border border-stone-200 px-3 py-2 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 text-sm"
+                        />
+                        <input
+                          type="email"
+                          value={person.email || ""}
+                          onChange={(e) =>
+                            updatePerson(idx, "email", e.target.value)
+                          }
+                          onKeyDown={handleKeyDown}
+                          placeholder="Email"
+                          className="rounded-lg border border-stone-200 px-3 py-2 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 text-sm"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {people.length < 4 && (
+                  <button
+                    type="button"
+                    onClick={addPerson}
+                    className="mt-2 text-sm text-stone-400 hover:text-stone-600 transition-colors flex items-center gap-1"
+                  >
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    Add another person
+                  </button>
+                )}
+                {people.some((p) => p.name) && !neighbor.met && (
+                  <p className="mt-2 text-xs text-stone-400">
+                    From county records — edit if this is a renter or has
+                    changed
                   </p>
                 )}
               </div>
@@ -215,35 +373,6 @@ export default function NeighborSheet({
                 ))}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-stone-600 mb-1">
-                    Phone
-                  </label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="412-555-1234"
-                    className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-stone-600 mb-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="name@email.com"
-                    className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 text-sm"
-                  />
-                </div>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-stone-600 mb-1">
                   Notes
@@ -266,12 +395,24 @@ export default function NeighborSheet({
                   }`}
                 >
                   {met && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-3 h-3 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   )}
                 </div>
-                <span className="text-sm text-stone-700">I&apos;ve met them</span>
+                <span className="text-sm text-stone-700">
+                  I&apos;ve met them
+                </span>
                 <input
                   type="checkbox"
                   checked={met}

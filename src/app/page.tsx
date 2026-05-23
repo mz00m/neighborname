@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { NeighborhoodData, Neighbor } from "@/lib/types";
-import { loadNeighborhood, saveNeighborhood, clearNeighborhood } from "@/lib/storage";
+import { loadOrSeedNeighborhood, saveNeighborhood, clearNeighborhood } from "@/lib/storage";
 import SetupScreen from "@/components/SetupScreen";
 import NeighborSheet from "@/components/NeighborSheet";
 import NeighborList from "@/components/NeighborList";
@@ -22,8 +22,10 @@ export default function Home() {
   const [addStreetError, setAddStreetError] = useState("");
 
   useEffect(() => {
-    setData(loadNeighborhood());
-    setLoaded(true);
+    loadOrSeedNeighborhood().then((d) => {
+      setData(d);
+      setLoaded(true);
+    });
   }, []);
 
   const handleSetupComplete = useCallback((neighborhood: NeighborhoodData) => {

@@ -13,6 +13,21 @@ export function loadNeighborhood(): NeighborhoodData | null {
   }
 }
 
+export async function loadOrSeedNeighborhood(): Promise<NeighborhoodData | null> {
+  const existing = loadNeighborhood();
+  if (existing) return existing;
+
+  try {
+    const res = await fetch("/seed.json");
+    if (!res.ok) return null;
+    const data = (await res.json()) as NeighborhoodData;
+    saveNeighborhood(data);
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export function saveNeighborhood(data: NeighborhoodData): void {
   data.lastUpdated = new Date().toISOString();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));

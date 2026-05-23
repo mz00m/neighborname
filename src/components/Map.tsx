@@ -12,6 +12,7 @@ interface MapProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onSelectHome: () => void;
+  onLocationUpdate?: (lat: number, lng: number) => void;
 }
 
 function markerColor(n: Neighbor): string {
@@ -53,13 +54,60 @@ export default function Map({
   selectedId,
   onSelect,
   onSelectHome,
+  onLocationUpdate,
 }: MapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Record<string, L.Marker>>({});
   const containerRef = useRef<HTMLDivElement>(null);
+  const locationMarkerRef = useRef<L.CircleMarker | null>(null);
+  const locationCircleRef = useRef<L.Circle | null>(null);
+  const watchIdRef = useRef<number | null>(null);
 
   const handleSelect = useCallback(onSelect, [onSelect]);
   const handleSelectHome = useCallback(onSelectHome, [onSelectHome]);
+
+  const startTracking = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !navigator.geolocation) return;
+
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+    }
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+        const latlng: L.LatLngExpression = [lat, lng];
+
+        if (!locationMarkerRef.current) {
+          locationMarkerRef.current = L.circleMarker(latlng, {
+            radius: 8,
+            fillColor: "#3b82f6",
+            fillOpacity: 1,
+            color: "white",
+            weight: 3,
+          }).addTo(map);
+          locationCircleRef.current = L.circle(latlng, {
+            radius: accuracy,
+            fillColor: "#3b82f6",
+            fillOpacity: 0.1,
+            color: "#3b82f6",
+            weight: 1,
+            opacity: 0.3,
+          }).addTo(map);
+          map.setView(latlng, 18);
+        } else {
+          locationMarkerRef.current.setLatLng(latlng);
+          locationCircleRef.current?.setLatLng(latlng);
+          locationCircleRef.current?.setRadius(accuracy);
+        }
+
+        onLocationUpdate?.(lat, lng);
+      },
+      undefined,
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+  }, [onLocationUpdate]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -89,6 +137,9 @@ export default function Map({
     mapRef.current = map;
 
     return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
       map.remove();
       mapRef.current = null;
       markersRef.current = {};
@@ -156,5 +207,19 @@ export default function Map({
     }
   }, [neighbors, selectedId, myParcelId, handleSelect]);
 
-  return <div ref={containerRef} className="w-full h-full" />;
+  return (
+    <div className="relative w-full h-full">
+      <div ref={containerRef} className="w-full h-full" />
+      <button
+        onClick={startTracking}
+        className="absolute bottom-4 right-4 z-10 w-10 h-10 bg-white rounded-full shadow-md border border-stone-200 flex items-center justify-center hover:bg-stone-50 transition-colors"
+        title="Show my location"
+      >
+        <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </button>
+    </div>
+  );
 }

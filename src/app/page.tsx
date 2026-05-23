@@ -20,6 +20,7 @@ export default function Home() {
   const [showAddStreet, setShowAddStreet] = useState(false);
   const [addStreetLoading, setAddStreetLoading] = useState(false);
   const [addStreetError, setAddStreetError] = useState("");
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
 
   useEffect(() => {
     loadOrSeedNeighborhood().then((d) => {
@@ -95,6 +96,11 @@ export default function Home() {
     setData(null);
     setSelectedId(null);
     setShowList(false);
+    setUserLocation(null);
+  }, []);
+
+  const handleLocationUpdate = useCallback((lat: number, lng: number) => {
+    setUserLocation([lat, lng]);
   }, []);
 
   if (!loaded) return null;
@@ -131,6 +137,33 @@ export default function Home() {
 
   const metCount = data.neighbors.filter((n) => n.met).length;
   const totalCount = data.neighbors.length;
+
+  function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
+    const R = 6371000;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  const nearbyNeighbors = userLocation
+    ? data.neighbors
+        .map((n) => ({
+          ...n,
+          distance: distanceMeters(
+            userLocation[0],
+            userLocation[1],
+            n.property.lat,
+            n.property.lng
+          ),
+        }))
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 4)
+    : [];
 
   return (
     <div className="h-dvh flex flex-col">
@@ -203,28 +236,68 @@ export default function Home() {
             setSelectedId(null);
             setShowList(false);
           }}
+          onLocationUpdate={handleLocationUpdate}
         />
 
-        <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm border border-stone-200 z-10">
-          <div className="flex items-center gap-3 text-xs text-stone-600">
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-              You
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-              Met
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-              Named
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-stone-400" />
-              Unknown
-            </span>
+        {nearbyNeighbors.length > 0 ? (
+          <div className="absolute bottom-4 left-4 right-16 bg-white/95 backdrop-blur-sm rounded-xl px-4 py-3 shadow-lg border border-stone-200 z-10">
+            <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-2">
+              Nearest to you
+            </p>
+            <div className="space-y-2">
+              {nearbyNeighbors.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => {
+                    setSelectedId(n.id);
+                    setShowHome(false);
+                    setShowList(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 text-left"
+                >
+                  {n.photo ? (
+                    <img src={n.photo} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
+                      n.met ? "bg-emerald-100 text-emerald-700" : n.name ? "bg-blue-100 text-blue-700" : "bg-stone-100 text-stone-400"
+                    }`}>
+                      {n.name ? n.name[0].toUpperCase() : "?"}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-stone-900 truncate">
+                      {n.name || "Unknown"}
+                    </p>
+                    <p className="text-[11px] text-stone-500">
+                      {n.property.houseNumber} {n.property.street} · {Math.round(n.distance)}m
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm border border-stone-200 z-10">
+            <div className="flex items-center gap-3 text-xs text-stone-600">
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                You
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+                Met
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                Named
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-stone-400" />
+                Unknown
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {showList && (

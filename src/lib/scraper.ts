@@ -106,15 +106,10 @@ function formatCouple(raw: string): string {
     right[0].toUpperCase() !== lastName1.toUpperCase();
 
   if (rightHasDifferentLast) {
-    const lastName2 = right[0];
     const firstName2 = right.slice(1).filter((p) => p.length > 1).join(" ");
-    const p1 = firstName1
-      ? `${titleCase(firstName1)} ${titleCase(lastName1)}`
-      : titleCase(lastName1);
-    const p2 = firstName2
-      ? `${titleCase(firstName2)} ${titleCase(lastName2)}`
-      : titleCase(lastName2);
-    return `${p1} & ${p2}`;
+    const first1 = firstName1 ? titleCase(firstName1) : titleCase(lastName1);
+    const first2 = firstName2 ? titleCase(firstName2) : titleCase(right[0]);
+    return `${first1} & ${first2}`;
   }
 
   const firstName2 = right

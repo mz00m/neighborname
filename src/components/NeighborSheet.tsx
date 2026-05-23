@@ -30,17 +30,47 @@ function derivePeople(neighbor: Neighbor): Person[] {
   }));
 }
 
+/** "Jerome & Mohini Schmitt" style — first names lead, shared last name trails */
+function formatDisplayName(people: Person[]): string {
+  const names = people.map((p) => p.name?.trim()).filter(Boolean);
+  if (names.length === 0) return "";
+  if (names.length === 1) return names[0];
+
+  const parsed = names.map((n) => {
+    const parts = n.split(" ");
+    if (parts.length === 1) return { first: parts[0], last: "" };
+    return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
+  });
+
+  const lasts = parsed.map((p) => p.last.toLowerCase()).filter(Boolean);
+  const sameLast = lasts.length === parsed.length && lasts.every((l) => l === lasts[0]);
+
+  if (sameLast && parsed[0].last) {
+    return parsed.map((p) => p.first).join(" & ") + " " + parsed[0].last;
+  }
+
+  // Different last names — just first names
+  return parsed.map((p) => p.first).join(" & ");
+}
+
+function housePhotoUrl(parcelId: string): string {
+  return `https://iasworld.alleghenycounty.us/iasworld/iDoc2/Services/GetPhoto.ashx?parid=${parcelId}&jur=002&Rank=1&size=600x400`;
+}
+
 export default function NeighborSheet({
   neighbor,
   isHome,
   onClose,
   onSave,
 }: NeighborSheetProps) {
-  const [people, setPeople] = useState<Person[]>([{ name: "", phone: "", email: "" }]);
+  const [people, setPeople] = useState<Person[]>([
+    { name: "", phone: "", email: "" },
+  ]);
   const [notes, setNotes] = useState("");
   const [isOwner, setIsOwner] = useState<boolean | null>(null);
   const [met, setMet] = useState(false);
   const [photo, setPhoto] = useState<string | undefined>(undefined);
+  const [housePhotoLoaded, setHousePhotoLoaded] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const snapshotRef = useRef("");
@@ -53,6 +83,7 @@ export default function NeighborSheet({
       setIsOwner(neighbor.isOwner);
       setMet(neighbor.met);
       setPhoto(neighbor.photo);
+      setHousePhotoLoaded(false);
       snapshotRef.current = JSON.stringify({
         people: initPeople,
         notes: neighbor.notes,
@@ -81,32 +112,35 @@ export default function NeighborSheet({
     setPeople((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  const handlePhoto = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const max = 400;
-        let w = img.width;
-        let h = img.height;
-        if (w > max || h > max) {
-          const scale = max / Math.max(w, h);
-          w = Math.round(w * scale);
-          h = Math.round(h * scale);
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
-        setPhoto(canvas.toDataURL("image/jpeg", 0.8));
+  const handlePhoto = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const max = 400;
+          let w = img.width;
+          let h = img.height;
+          if (w > max || h > max) {
+            const scale = max / Math.max(w, h);
+            w = Math.round(w * scale);
+            h = Math.round(h * scale);
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+          setPhoto(canvas.toDataURL("image/jpeg", 0.8));
+        };
+        img.src = reader.result as string;
       };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  }, []);
+      reader.readAsDataURL(file);
+      e.target.value = "";
+    },
+    []
+  );
 
   if (!neighbor) return null;
 
@@ -131,10 +165,7 @@ export default function NeighborSheet({
       }))
       .filter((p) => p.name || p.phone || p.email);
 
-    const displayName = cleanPeople
-      .map((p) => p.name)
-      .filter(Boolean)
-      .join(" & ");
+    const displayName = formatDisplayName(cleanPeople);
 
     onSave(neighbor.id, {
       name: displayName,
@@ -156,51 +187,80 @@ export default function NeighborSheet({
     }
   }
 
+  function dismiss() {
+    if (hasChanges) handleSave();
+    else onClose();
+  }
+
   return (
     <>
       <div
         className="fixed inset-0 bg-black/20 z-40 backdrop-blur-[1px]"
-        onClick={() => {
-          if (hasChanges) handleSave();
-          else onClose();
-        }}
+        onClick={dismiss}
       />
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl max-h-[85dvh] overflow-y-auto animate-slide-up">
-        <div className="sticky top-0 bg-white pt-3 pb-2 px-5 border-b border-stone-100">
-          <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-3" />
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-lg font-semibold text-stone-900">
+        {/* House photo banner */}
+        <div className="relative">
+          <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mt-3 mb-1 relative z-10" />
+          <div
+            className={`relative overflow-hidden ${housePhotoLoaded ? "h-40" : "h-0"} transition-[height] duration-300`}
+          >
+            <img
+              src={housePhotoUrl(property.parcelId)}
+              alt=""
+              className="w-full h-full object-cover"
+              onLoad={() => setHousePhotoLoaded(true)}
+              onError={() => setHousePhotoLoaded(false)}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+            <div className="absolute bottom-3 left-5 right-12">
+              <p className="text-lg font-semibold text-white drop-shadow-sm">
                 {property.houseNumber} {property.street}
               </p>
               {isHome && (
-                <span className="inline-block mt-0.5 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                <span className="inline-block mt-0.5 text-xs font-medium text-amber-200 bg-amber-900/40 px-2 py-0.5 rounded-full">
                   Your home
                 </span>
               )}
             </div>
-            <button
-              onClick={() => {
-                if (hasChanges) handleSave();
-                else onClose();
-              }}
-              className="text-stone-400 hover:text-stone-600 p-1"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
           </div>
+
+          {/* Fallback header when no house photo */}
+          {!housePhotoLoaded && (
+            <div className="px-5 pt-2 pb-2 border-b border-stone-100">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-lg font-semibold text-stone-900">
+                    {property.houseNumber} {property.street}
+                  </p>
+                  {isHome && (
+                    <span className="inline-block mt-0.5 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                      Your home
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={dismiss}
+            className="absolute top-3 right-3 z-10 text-stone-400 hover:text-stone-600 p-1 bg-white/80 rounded-full backdrop-blur-sm"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
         </div>
 
         <div className="px-5 py-4 space-y-5">

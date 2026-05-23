@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist);
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.25s ease-out;
+}
+
+.neighbor-tooltip {
+  background: #1c1917;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.neighbor-tooltip::before {
+  border-top-color: #1c1917;
+}
+
+.leaflet-container {
+  z-index: 0 !important;
+}
+
+.leaflet-control-zoom a {
+  background: white !important;
+  color: #44403c !important;
+  border-color: #e7e5e4 !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: #f5f5f4 !important;
+}

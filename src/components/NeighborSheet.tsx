@@ -8,6 +8,10 @@ interface NeighborSheetProps {
   isHome?: boolean;
   onClose: () => void;
   onSave: (id: string, updates: Partial<Neighbor>) => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  /** e.g. "3 of 47" */
+  position?: string;
 }
 
 function derivePeople(neighbor: Neighbor): Person[] {
@@ -77,6 +81,9 @@ export default function NeighborSheet({
   isHome,
   onClose,
   onSave,
+  onPrev,
+  onNext,
+  position,
 }: NeighborSheetProps) {
   const [people, setPeople] = useState<Person[]>([
     { name: "", phone: "", email: "" },
@@ -89,6 +96,9 @@ export default function NeighborSheet({
   const nameRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const snapshotRef = useRef("");
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (neighbor) {
@@ -157,6 +167,48 @@ export default function NeighborSheet({
     []
   );
 
+  const saveIfChanged = useCallback(() => {
+    if (!neighbor || isHome) return;
+    const currentSnapshot = JSON.stringify({ people, notes, isOwner, met, photo });
+    if (currentSnapshot === snapshotRef.current) return;
+    const cleanPeople = people
+      .map((p) => ({
+        name: p.name?.trim() || "",
+        phone: p.phone?.trim() || undefined,
+        email: p.email?.trim() || undefined,
+      }))
+      .filter((p) => p.name || p.phone || p.email);
+    const displayName = formatDisplayName(cleanPeople);
+    onSave(neighbor.id, {
+      name: displayName,
+      people: cleanPeople.length > 0 ? cleanPeople : undefined,
+      notes,
+      isOwner,
+      met: met || cleanPeople.some((p) => !!p.name),
+      photo,
+      email: undefined,
+      phone: undefined,
+    });
+  }, [neighbor, isHome, people, notes, isOwner, met, photo, onSave]);
+
+  const handleSwipeStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleSwipeEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const dx = e.changedTouches[0].clientX - touchStartX.current;
+      const dy = e.changedTouches[0].clientY - touchStartY.current;
+      // Only count horizontal swipes (not vertical scrolling)
+      if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
+      saveIfChanged();
+      if (dx < 0 && onNext) onNext(); // swipe left = next (higher number)
+      if (dx > 0 && onPrev) onPrev(); // swipe right = prev (lower number)
+    },
+    [saveIfChanged, onNext, onPrev]
+  );
+
   if (!neighbor) return null;
 
   const { property } = neighbor;
@@ -213,7 +265,12 @@ export default function NeighborSheet({
         className="fixed inset-0 bg-black/20 z-40 backdrop-blur-[1px]"
         onClick={dismiss}
       />
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl max-h-[85dvh] overflow-y-auto animate-slide-up">
+      <div
+        ref={sheetRef}
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl max-h-[85dvh] overflow-y-auto animate-slide-up"
+        onTouchStart={handleSwipeStart}
+        onTouchEnd={handleSwipeEnd}
+      >
         {/* House photo banner */}
         <div className="relative">
           <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mt-3 mb-1 relative z-10" />
@@ -288,6 +345,32 @@ export default function NeighborSheet({
               />
             </svg>
           </button>
+
+          {/* Swipe navigation arrows */}
+          {!isHome && (onPrev || onNext) && (
+            <>
+              {onPrev && (
+                <button
+                  onClick={() => { saveIfChanged(); onPrev(); }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm text-stone-400 hover:text-stone-700 shadow-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+              )}
+              {onNext && (
+                <button
+                  onClick={() => { saveIfChanged(); onNext(); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm text-stone-400 hover:text-stone-700 shadow-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              )}
+            </>
+          )}
         </div>
 
         <div className="px-5 py-4 space-y-5">
@@ -553,6 +636,10 @@ export default function NeighborSheet({
               )}
             </div>
           </div>
+
+          {position && !isHome && (
+            <p className="text-center text-xs text-stone-400">{position}</p>
+          )}
 
           {!isHome && hasChanges && (
             <button

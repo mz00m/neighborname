@@ -148,9 +148,20 @@ export default function Home() {
     return <SetupScreen onComplete={handleSetupComplete} />;
   }
 
+  // Sort neighbors by street then house number for swipe navigation
+  const sortedNeighbors = [...data.neighbors].sort((a, b) => {
+    const streetCmp = a.property.street.localeCompare(b.property.street);
+    if (streetCmp !== 0) return streetCmp;
+    return parseInt(a.property.houseNumber) - parseInt(b.property.houseNumber);
+  });
+
   const selectedNeighbor = selectedId
     ? data.neighbors.find((n) => n.id === selectedId) ?? null
     : null;
+
+  const selectedSortedIdx = selectedId
+    ? sortedNeighbors.findIndex((n) => n.id === selectedId)
+    : -1;
 
   const homeNeighbor = showHome
     ? {
@@ -363,6 +374,21 @@ export default function Home() {
         neighbor={selectedNeighbor}
         onClose={() => setSelectedId(null)}
         onSave={handleSaveNeighbor}
+        onPrev={
+          selectedSortedIdx > 0
+            ? () => setSelectedId(sortedNeighbors[selectedSortedIdx - 1].id)
+            : undefined
+        }
+        onNext={
+          selectedSortedIdx >= 0 && selectedSortedIdx < sortedNeighbors.length - 1
+            ? () => setSelectedId(sortedNeighbors[selectedSortedIdx + 1].id)
+            : undefined
+        }
+        position={
+          selectedSortedIdx >= 0
+            ? `${selectedSortedIdx + 1} of ${sortedNeighbors.length}`
+            : undefined
+        }
       />
 
       {showHome && homeNeighbor && (

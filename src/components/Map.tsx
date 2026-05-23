@@ -66,7 +66,7 @@ export default function Map({
   const handleSelect = useCallback(onSelect, [onSelect]);
   const handleSelectHome = useCallback(onSelectHome, [onSelectHome]);
 
-  const startTracking = useCallback(() => {
+  const startTracking = useCallback((autoZoom = true) => {
     const map = mapRef.current;
     if (!map || !navigator.geolocation) return;
 
@@ -95,7 +95,7 @@ export default function Map({
             weight: 1,
             opacity: 0.3,
           }).addTo(map);
-          map.setView(latlng, 18);
+          if (autoZoom) map.setView(latlng, 18);
         } else {
           locationMarkerRef.current.setLatLng(latlng);
           locationCircleRef.current?.setLatLng(latlng);
@@ -145,6 +145,11 @@ export default function Map({
       markersRef.current = {};
     };
   }, [center, handleSelect, handleSelectHome]);
+
+  // Auto-start location tracking without zooming away from neighborhood
+  useEffect(() => {
+    if (mapRef.current) startTracking(false);
+  }, [startTracking]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -211,7 +216,7 @@ export default function Map({
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full" />
       <button
-        onClick={startTracking}
+        onClick={() => startTracking(true)}
         className="absolute bottom-4 right-4 z-10 w-10 h-10 bg-white rounded-full shadow-md border border-stone-200 flex items-center justify-center hover:bg-stone-50 transition-colors"
         title="Show my location"
       >

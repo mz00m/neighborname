@@ -93,6 +93,16 @@ function firstNames(neighbor: Neighbor): string {
   return firsts.join(" & ");
 }
 
+/** Get a compact profession summary for the header */
+function professionSummary(neighbor: Neighbor): string {
+  const profs = (neighbor.people || [])
+    .map((p) => p.profession)
+    .filter(Boolean) as string[];
+  if (profs.length === 0) return "";
+  // Truncate long professions for the header
+  return profs.map((p) => p.split(";")[0].trim()).join(" · ");
+}
+
 function housePhotoUrl(parcelId: string): string {
   return `https://iasworld.alleghenycounty.us/iasworld/iDoc2/Services/GetPhoto.ashx?parid=${parcelId}&jur=002&Rank=1&size=600x400`;
 }
@@ -317,11 +327,18 @@ export default function NeighborSheet({
                   Your home
                 </span>
               ) : (
-                firstNames(neighbor) && (
-                  <p className="text-sm text-white/90 drop-shadow-sm">
-                    {firstNames(neighbor)}
-                  </p>
-                )
+                <>
+                  {firstNames(neighbor) && (
+                    <p className="text-sm text-white/90 drop-shadow-sm">
+                      {firstNames(neighbor)}
+                    </p>
+                  )}
+                  {professionSummary(neighbor) && (
+                    <p className="text-xs text-white/70 drop-shadow-sm mt-0.5 line-clamp-1">
+                      {professionSummary(neighbor)}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -339,11 +356,18 @@ export default function NeighborSheet({
                       Your home
                     </span>
                   ) : (
-                    firstNames(neighbor) && (
-                      <p className="text-sm text-stone-500">
-                        {firstNames(neighbor)}
-                      </p>
-                    )
+                    <>
+                      {firstNames(neighbor) && (
+                        <p className="text-sm text-stone-500">
+                          {firstNames(neighbor)}
+                        </p>
+                      )}
+                      {professionSummary(neighbor) && (
+                        <p className="text-xs text-stone-400 mt-0.5 line-clamp-1">
+                          {professionSummary(neighbor)}
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

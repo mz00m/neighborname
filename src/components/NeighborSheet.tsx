@@ -20,14 +20,15 @@ function derivePeople(neighbor: Neighbor): Person[] {
       name: p.name || "",
       phone: p.phone || "",
       email: p.email || "",
+      profession: p.profession || "",
     }));
   }
-  if (!neighbor.name) return [{ name: "", phone: "", email: "" }];
+  if (!neighbor.name) return [{ name: "", phone: "", email: "", profession: "" }];
 
   // Migrate from legacy format — handle shared last name:
   // "John & Allison Omalley" → ["John Omalley", "Allison Omalley"]
   if (!neighbor.name.includes(" & ")) {
-    return [{ name: neighbor.name, phone: neighbor.phone || "", email: neighbor.email || "" }];
+    return [{ name: neighbor.name, phone: neighbor.phone || "", email: neighbor.email || "", profession: "" }];
   }
 
   const parts = neighbor.name.split(" & ");
@@ -42,15 +43,15 @@ function derivePeople(neighbor: Neighbor): Person[] {
     const sharedLast = rightWords[rightWords.length - 1];
     const rightFirst = rightWords.slice(0, -1).join(" ");
     return [
-      { name: `${left} ${sharedLast}`, phone: neighbor.phone || "", email: neighbor.email || "" },
-      { name: `${rightFirst} ${sharedLast}`, phone: "", email: "" },
+      { name: `${left} ${sharedLast}`, phone: neighbor.phone || "", email: neighbor.email || "", profession: "" },
+      { name: `${rightFirst} ${sharedLast}`, phone: "", email: "", profession: "" },
     ];
   }
 
   // Both already have full names, or both are just first names
   return [
-    { name: left, phone: neighbor.phone || "", email: neighbor.email || "" },
-    { name: right, phone: "", email: "" },
+    { name: left, phone: neighbor.phone || "", email: neighbor.email || "", profession: "" },
+    { name: right, phone: "", email: "", profession: "" },
   ];
 }
 
@@ -150,7 +151,7 @@ export default function NeighborSheet({
   );
 
   const addPerson = useCallback(() => {
-    setPeople((prev) => [...prev, { name: "", phone: "", email: "" }]);
+    setPeople((prev) => [...prev, { name: "", phone: "", email: "", profession: "" }]);
   }, []);
 
   const removePerson = useCallback((index: number) => {
@@ -196,6 +197,7 @@ export default function NeighborSheet({
         name: p.name?.trim() || "",
         phone: p.phone?.trim() || undefined,
         email: p.email?.trim() || undefined,
+        profession: p.profession?.trim() || undefined,
       }))
       .filter((p) => p.name || p.phone || p.email);
     const displayName = formatDisplayName(cleanPeople);
@@ -249,6 +251,7 @@ export default function NeighborSheet({
         name: p.name?.trim() || "",
         phone: p.phone?.trim() || undefined,
         email: p.email?.trim() || undefined,
+        profession: p.profession?.trim() || undefined,
       }))
       .filter((p) => p.name || p.phone || p.email);
 
@@ -488,6 +491,16 @@ export default function NeighborSheet({
                           </button>
                         )}
                       </div>
+                      <input
+                        type="text"
+                        value={person.profession || ""}
+                        onChange={(e) =>
+                          updatePerson(idx, "profession", e.target.value)
+                        }
+                        onKeyDown={handleKeyDown}
+                        placeholder="Profession"
+                        className="rounded-lg border border-stone-200 px-3 py-2 text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 text-sm"
+                      />
                       <div className="grid grid-cols-2 gap-2">
                         <input
                           type="tel"

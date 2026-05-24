@@ -21,14 +21,18 @@ function markerColor(n: Neighbor): string {
   return "#a8a29e"; // stone-400
 }
 
-function createMarkerIcon(color: string, size: number, isSelected: boolean) {
-  const border = isSelected ? "3px solid #1c1917" : "2px solid white";
-  const shadow = isSelected ? "0 0 0 2px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.3)";
+function createMarkerIcon(color: string, isSelected: boolean, houseNumber: string) {
+  const h = isSelected ? 22 : 18;
+  const fontSize = isSelected ? 10 : 8;
+  const pad = isSelected ? 6 : 4;
+  const border = isSelected ? "2px solid #1c1917" : "1.5px solid white";
+  const shadow = isSelected ? "0 0 0 1px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.3)" : "0 1px 3px rgba(0,0,0,0.25)";
+  const minW = h;
   return L.divIcon({
     className: "",
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:${border};box-shadow:${shadow};transition:all 0.15s ease"></div>`,
+    iconSize: [0, 0],
+    iconAnchor: [0, h / 2],
+    html: `<div style="display:inline-flex;align-items:center;justify-content:center;height:${h}px;min-width:${minW}px;padding:0 ${pad}px;border-radius:${h}px;background:${color};border:${border};box-shadow:${shadow};color:white;font-size:${fontSize}px;font-weight:600;font-family:system-ui,sans-serif;white-space:nowrap;transform:translateX(-50%);transition:all 0.15s ease">${houseNumber}</div>`,
   });
 }
 
@@ -163,8 +167,7 @@ export default function Map({
 
       const color = markerColor(n);
       const isSelected = n.id === selectedId;
-      const size = isSelected ? 28 : 20;
-      const icon = createMarkerIcon(color, size, isSelected);
+      const icon = createMarkerIcon(color, isSelected, n.property.houseNumber);
 
       if (markersRef.current[n.id]) {
         const marker = markersRef.current[n.id];

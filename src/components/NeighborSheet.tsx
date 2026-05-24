@@ -123,6 +123,8 @@ export default function NeighborSheet({
   const [isOwner, setIsOwner] = useState<boolean | null>(null);
   const [met, setMet] = useState(false);
   const [photo, setPhoto] = useState<string | undefined>(undefined);
+  const [kids, setKids] = useState("");
+  const [pets, setPets] = useState("");
   const [housePhotoLoaded, setHousePhotoLoaded] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -139,6 +141,8 @@ export default function NeighborSheet({
       setIsOwner(neighbor.isOwner);
       setMet(neighbor.met);
       setPhoto(neighbor.photo);
+      setKids(neighbor.kids || "");
+      setPets(neighbor.pets || "");
       setHousePhotoLoaded(false);
       snapshotRef.current = JSON.stringify({
         people: initPeople,
@@ -146,6 +150,8 @@ export default function NeighborSheet({
         isOwner: neighbor.isOwner,
         met: neighbor.met,
         photo: neighbor.photo,
+        kids: neighbor.kids || "",
+        pets: neighbor.pets || "",
       });
       setTimeout(() => nameRef.current?.focus(), 300);
     }
@@ -200,7 +206,7 @@ export default function NeighborSheet({
 
   const saveIfChanged = useCallback(() => {
     if (!neighbor || isHome) return;
-    const currentSnapshot = JSON.stringify({ people, notes, isOwner, met, photo });
+    const currentSnapshot = JSON.stringify({ people, notes, isOwner, met, photo, kids, pets });
     if (currentSnapshot === snapshotRef.current) return;
     const cleanPeople = people
       .map((p) => ({
@@ -218,10 +224,12 @@ export default function NeighborSheet({
       isOwner,
       met: met || cleanPeople.some((p) => !!p.name),
       photo,
+      kids: kids.trim() || undefined,
+      pets: pets.trim() || undefined,
       email: undefined,
       phone: undefined,
     });
-  }, [neighbor, isHome, people, notes, isOwner, met, photo, onSave]);
+  }, [neighbor, isHome, people, notes, isOwner, met, photo, kids, pets, onSave]);
 
   const handleSwipeStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -251,6 +259,8 @@ export default function NeighborSheet({
     isOwner,
     met,
     photo,
+    kids,
+    pets,
   });
   const hasChanges = currentSnapshot !== snapshotRef.current;
 
@@ -274,6 +284,8 @@ export default function NeighborSheet({
       isOwner,
       met: met || cleanPeople.some((p) => !!p.name),
       photo,
+      kids: kids.trim() || undefined,
+      pets: pets.trim() || undefined,
       email: undefined,
       phone: undefined,
     });
@@ -607,10 +619,39 @@ export default function NeighborSheet({
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Kids, pets, works at..., moved in 2023"
+                  placeholder="Moved in 2023, garden club, from Ohio..."
                   rows={2}
                   className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 text-sm resize-none"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-stone-600 mb-1">
+                    Kids
+                  </label>
+                  <input
+                    type="text"
+                    value={kids}
+                    onChange={(e) => setKids(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="e.g. Emma (8), Jake (5)"
+                    className="w-full rounded-lg border border-stone-200 px-3 py-2 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-stone-600 mb-1">
+                    Pets
+                  </label>
+                  <input
+                    type="text"
+                    value={pets}
+                    onChange={(e) => setPets(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="e.g. Golden retriever, Luna"
+                    className="w-full rounded-lg border border-stone-200 px-3 py-2 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 text-sm"
+                  />
+                </div>
               </div>
 
               <label className="flex items-center gap-3 cursor-pointer">

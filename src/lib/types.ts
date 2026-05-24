@@ -37,6 +37,8 @@ export interface Neighbor {
   tags: string[];
   met: boolean;
   photo?: string;
+  kids?: string;
+  pets?: string;
   email?: string; // legacy — migrated to people
   phone?: string; // legacy — migrated to people
   addedAt: string;
